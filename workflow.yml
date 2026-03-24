@@ -39,15 +39,19 @@ github:
 roles:
   implementer:
     bin: claude
+    prompt: prompts/implementer.md
     args: ""
   reviewer:
     bin: codex
+    prompt: prompts/reviewer.md
     args: ""
   translator:
     bin: vibe
+    prompt: prompts/translator.md
     args: ""
   documentor:
     bin: vibe
+    prompt: prompts/documentor.md
     args: ""
 
 # ---------------------------------------------------------------------------

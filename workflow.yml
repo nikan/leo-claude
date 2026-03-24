@@ -1,0 +1,237 @@
+name: leo-claude
+description: Declarative workflow engine for CLI-only GitHub issue lifecycle.
+
+# ---------------------------------------------------------------------------
+# Inputs — provided by the user at invocation time
+# ---------------------------------------------------------------------------
+inputs:
+  issue:
+    description: GitHub issue number or full URL
+    required: true
+  target_branch:
+    description: Override the default target branch
+    required: false
+
+# ---------------------------------------------------------------------------
+# Branch and merge settings
+# ---------------------------------------------------------------------------
+branches:
+  target_base: develop
+  merge_method: squash          # merge | squash | rebase
+  prefixes:
+    issue: issue
+    translation: issue-i18n
+    documentation: issue-docs
+  pattern: "{prefix}/{issue-number}-{short-slug}"
+
+# ---------------------------------------------------------------------------
+# GitHub account hints (optional)
+# Set these to your own GitHub usernames before running the workflow.
+# If left empty, the workflow will prompt you to provide them.
+# ---------------------------------------------------------------------------
+github:
+  dev_user: ""
+  review_user: ""
+
+# ---------------------------------------------------------------------------
+# Role definitions — each role maps to a CLI binary
+# ---------------------------------------------------------------------------
+roles:
+  implementer:
+    bin: claude
+    args: ""
+  reviewer:
+    bin: codex
+    args: ""
+  translator:
+    bin: vibe
+    args: ""
+  documentor:
+    bin: vibe
+    args: ""
+
+# ---------------------------------------------------------------------------
+# CLI dependencies required before the workflow can run
+# ---------------------------------------------------------------------------
+preflight:
+  required_tools:
+    - bash
+    - git
+    - gh
+    - rg
+  checks:
+    - scripts/check-environment.sh
+
+# ---------------------------------------------------------------------------
+# Handoff contract — context passed to every role at each stage
+# ---------------------------------------------------------------------------
+handoff:
+  - repo_path
+  - issue_number
+  - issue_url
+  - parent_issue_summary
+  - sub_issue_list
+  - target_branch
+  - working_branch
+  - acceptance_criteria
+  - changed_files
+  - check_outcomes
+  - next_action
+
+# ---------------------------------------------------------------------------
+# Stages — executed in order; each stage can be conditional or skipped
+# ---------------------------------------------------------------------------
+stages:
+
+  - id: preflight
+    name: Preflight gate
+    description: Validate tools, auth, config, and role binaries.
+    on_failure: halt
+    steps:
+      - run: scripts/check-environment.sh
+      - verify: roles
+        message: >
+          Stop and report exactly which role is blocked and what
+          needs remediation.
+
+  - id: context
+    name: Prepare issue context
+    description: Resolve the issue, sub-issues, and build an execution plan.
+    commands:
+      - gh issue view {issue}
+      - gh issue list
+      - gh api graphql
+      - git fetch
+    steps:
+      - resolve: issue_number from input
+      - read: parent issue via gh issue view
+      - resolve: sub-issues from GitHub relationships or task-list body
+      - build: execution plan covering parent + in-scope sub-issues
+      - switch: to github.dev_user if set; prompt user for account if empty
+
+  - id: branch
+    name: Create issue branch
+    description: Create a working branch from the target base.
+    steps:
+      - checkout: "{branches.target_base}"
+      - pull: update local branch
+      - create: "{branches.prefixes.issue}/{issue-number}-{short-slug}"
+
+  - id: implement
+    name: Implement
+    role: implementer
+    description: Complete the parent issue and all in-scope sub-issues.
+    rules:
+      - Complete parent and all in-scope sub-issues on the issue branch.
+      - Respect repository guidance files before editing.
+      - Run tests and type checks before handing off.
+      - Commit logically grouped changes.
+      - If missing scope or blocked dependencies are found, pause and surface before review.
+
+  - id: review
+    name: Review
+    role: reviewer
+    description: Review the diff for regressions, correctness, and branch hygiene.
+    same_user_policy: >
+      If github.dev_user and github.review_user are the same account (or both
+      empty), the reviewer must leave PR comments instead of submitting a change
+      request, because GitHub does not allow a user to request changes on their
+      own pull request. Feedback is delivered as inline and general comments.
+      The implementer then addresses the comments and re-requests review.
+    rules:
+      - Review diff against the target branch.
+      - Focus on regressions, correctness, missing tests, migration risk, branch hygiene.
+      - Look into touched files or related code if the diff alone is insufficient.
+      - If github.dev_user == github.review_user, post review feedback as PR comments, not a change request.
+      - If github.dev_user != github.review_user, submit a formal change request when issues are found.
+      - If issues found, return to implementer, then re-review after fixes.
+      - Only continue once review is explicitly clean.
+    on_failure: goto implement
+
+  - id: merge
+    name: Merge and clean up
+    description: Merge, close issues, delete the issue branch.
+    steps:
+      - action: merge
+        source: "{working_branch}"
+        target: "{branches.target_base}"
+        method: "{branches.merge_method}"
+      - action: close
+        scope: parent issue and completed sub-issues
+      - action: delete
+        branch: "{working_branch}"
+        where: local and remote
+    rules:
+      - Do not close sub-issues that were deferred or left out of scope.
+
+  - id: translate
+    name: Translation follow-up
+    role: translator
+    condition: new or changed user-facing strings exist
+    description: Update locale targets on a follow-up branch after the feature merge.
+    branch: "{branches.prefixes.translation}/{issue-number}-{short-slug}"
+    steps:
+      - action: inspect
+        scope: merged work for new or changed user-facing strings
+      - action: skip_if
+        condition: no translation work needed
+      - action: update
+        scope: every required locale target
+      - action: check
+        scope: translation-bearing files
+      - action: merge
+        target: "{branches.target_base}"
+      - action: close
+        scope: translation-specific issue if one exists
+      - action: delete
+        branch: follow-up branch
+
+  - id: document
+    name: Documentation follow-up
+    role: documentor
+    condition: change affects user flows, setup, architecture, ops, or notable behavior
+    description: Update docs on a follow-up branch after the feature merge.
+    branch: "{branches.prefixes.documentation}/{issue-number}-{short-slug}"
+    steps:
+      - action: inspect
+        scope: shipped functionality, not the original issue text
+      - action: skip_if
+        condition: no documentation update needed
+      - action: update
+        scope: relevant docs aligned with actual merged implementation
+      - action: merge
+        target: "{branches.target_base}"
+      - action: delete
+        branch: follow-up branch
+
+# ---------------------------------------------------------------------------
+# Completion — all conditions that must be true for the workflow to be done
+# ---------------------------------------------------------------------------
+completion:
+  - parent issue implemented
+  - in-scope sub-issues implemented
+  - reviewer sign-off obtained
+  - code merged into target branch
+  - completed issues closed
+  - issue branches deleted
+  - translation checked and merged if needed
+  - documentation checked and merged if needed
+
+# ---------------------------------------------------------------------------
+# Failure rules — global error handling
+# ---------------------------------------------------------------------------
+failure:
+  preflight_fail: >
+    Stop before changing code. Explain the exact problem. Ask the user to
+    remediate. Do not continue until confirmed.
+  review_fail: >
+    Do not merge. Return to implementer.
+  followup_conflict: >
+    Translation or documentation changes go on follow-up branches, never
+    the already-deleted issue branch.
+  auth_fail: >
+    If GitHub auth or permissions block issue closure, merge if the code
+    workflow is otherwise complete, then tell the user exactly what remains
+    manual.
+  unknown: >
+    Pause, summarize the failure clearly, and ask the user how to proceed.

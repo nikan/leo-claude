@@ -1,0 +1,7 @@
+interface:
+  display_name: "Leo Claude"
+  short_description: "Declarative workflow engine for CLI issue lifecycle"
+  default_prompt: "Use $leo-claude to implement GitHub issue #123 on develop with review, merge, translation, and documentation follow-up."
+
+policy:
+  allow_implicit_invocation: false

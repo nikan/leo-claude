@@ -64,6 +64,20 @@ else
 fi
 
 echo
+echo "Checking vibe auth status..."
+if [[ -f "${HOME}/.vibe/.env" ]] && grep -q 'MISTRAL_API_KEY' "${HOME}/.vibe/.env" 2>/dev/null; then
+  if echo "" | timeout 15 vibe -p "Say OK" --output text >/dev/null 2>&1; then
+    printf 'OK   %s\n' "vibe auth (API key valid)"
+  else
+    printf 'MISS %s\n' "vibe auth (key found but API call failed)" >&2
+    missing=1
+  fi
+else
+  printf 'MISS %s\n' "vibe auth (run: vibe --setup)" >&2
+  missing=1
+fi
+
+echo
 echo "Checking configured role binaries..."
 if ! "${SCRIPT_DIR}/check-role-installation.sh"; then
   missing=1

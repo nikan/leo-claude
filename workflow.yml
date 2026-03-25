@@ -111,7 +111,13 @@ stages:
     steps:
       - resolve: issue_number from input
       - read: parent issue via gh issue view
-      - resolve: sub-issues from GitHub relationships or task-list body
+      - resolve: >
+          sub-issues by running scripts/resolve-sub-issues.py {issue}.
+          The script checks two sources in priority order:
+            1. GitHub native sub-issues (GraphQL subIssues field)
+            2. Task-list body references (lines matching `- [ ] #N`)
+          Output is NDJSON; each line has number, title, state, source, url.
+          Collect all results into sub_issue_list.
       - build: execution plan covering parent + in-scope sub-issues
       - switch: to github.dev_user if set; prompt user for account if empty
 
@@ -126,13 +132,17 @@ stages:
   - id: implement
     name: Implement
     role: implementer
-    description: Complete the parent issue and all in-scope sub-issues.
+    description: >
+      Complete the parent issue and every sub-issue in sub_issue_list on the
+      working branch. Sub-issues come from GitHub native child issues or
+      task-list body references (resolved in the context stage).
     rules:
-      - Complete parent and all in-scope sub-issues on the issue branch.
+      - Implement the parent issue first, then each sub-issue in sub_issue_list in order.
+      - Treat every OPEN sub-issue in sub_issue_list as in-scope unless it is explicitly deferred.
       - Respect repository guidance files before editing.
       - Run tests and type checks before handing off.
-      - Commit logically grouped changes.
-      - If missing scope or blocked dependencies are found, pause and surface before review.
+      - Commit logically grouped changes; reference each issue number in the commit message.
+      - If a sub-issue is blocked or out of scope, pause and surface it — do not silently skip.
 
   - id: review
     name: Review
@@ -156,19 +166,25 @@ stages:
 
   - id: merge
     name: Merge and clean up
-    description: Merge, close issues, delete the issue branch.
+    description: Merge, close all implemented issues, delete the issue branch.
     steps:
       - action: merge
         source: "{working_branch}"
         target: "{branches.target_base}"
         method: "{branches.merge_method}"
       - action: close
-        scope: parent issue and completed sub-issues
+        command: >
+          scripts/resolve-sub-issues.py {issue_number} |
+          scripts/close-issues.py {issue_number}
+        scope: >
+          Parent issue and every OPEN sub-issue that was implemented.
+          Sub-issues deferred or left out of scope must NOT be closed.
       - action: delete
         branch: "{working_branch}"
         where: local and remote
     rules:
-      - Do not close sub-issues that were deferred or left out of scope.
+      - Run the close command above; do not close issues manually one by one.
+      - Do not close sub-issues that were explicitly deferred or skipped.
 
   - id: translate
     name: Translation follow-up

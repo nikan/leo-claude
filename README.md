@@ -19,10 +19,13 @@ Each stage is executed by a configurable CLI agent binary (e.g. `claude`, `codex
 
 ## Prerequisites
 
+- `python3` (3.8+) with `pyyaml` (`pip install pyyaml`)
 - `git`
 - `gh` (GitHub CLI, authenticated)
 - `rg` (ripgrep)
 - At least one AI coding CLI installed (`claude`, `codex`, `vibe`, or `copilot`)
+
+If Python 3 or PyYAML is missing, the preflight launcher will detect your OS and print install instructions.
 
 ## Installation
 
@@ -102,11 +105,15 @@ roles:
     bin: codex                # reviews the diff
   translator:
     bin: vibe                 # handles i18n follow-up
+    args: "--output text"     # required for non-interactive execution
+    stdin: /dev/null          # vibe hangs if stdin is open
   documentor:
     bin: vibe                 # handles docs follow-up
+    args: "--output text"
+    stdin: /dev/null
 ```
 
-Any CLI that accepts a prompt can be used as a role binary.
+Any CLI that accepts a prompt can be used as a role binary. The `args` and `stdin` fields are optional and only needed when a binary requires special flags for non-interactive use.
 
 ### Override the workflow file
 

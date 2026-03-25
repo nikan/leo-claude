@@ -12,5 +12,8 @@ Thumbs.db
 # Environment overrides
 *.local.env
 
+# Python
+__pycache__/
+
 # Claude Code
 .claude/settings.local.json

@@ -11,17 +11,9 @@ Examples:
 """
 
 import sys
-import yaml
 from pathlib import Path
 
-
-def resolve(data, path):
-    for key in path.split("."):
-        if isinstance(data, dict):
-            data = data.get(key)
-        else:
-            return None
-    return data
+from workflow_utils import load_workflow, resolve
 
 
 def main():
@@ -30,15 +22,9 @@ def main():
         sys.exit(1)
 
     key_path = sys.argv[1]
-    workflow_file = sys.argv[2] if len(sys.argv) > 2 else None
+    workflow_file = Path(sys.argv[2]) if len(sys.argv) > 2 else None
 
-    if workflow_file is None:
-        script_dir = Path(__file__).resolve().parent
-        workflow_file = script_dir.parent / "workflow.yml"
-
-    with open(workflow_file) as f:
-        data = yaml.safe_load(f)
-
+    data = load_workflow(workflow_file)
     value = resolve(data, key_path)
 
     if value is None:

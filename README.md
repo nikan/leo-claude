@@ -121,10 +121,10 @@ export WORKFLOW_FILE=/path/to/custom-workflow.yml
 Run the preflight checks before first use:
 
 ```bash
-scripts/check-environment.sh
+scripts/preflight.sh
 ```
 
-This validates CLI dependencies, GitHub auth, config values, and role binaries in one pass.
+This validates Python 3 and PyYAML availability (with platform-specific install hints if missing), then runs the full environment check: CLI dependencies, GitHub auth, vibe auth, config values, and role binaries.
 
 ## Platform Compatibility
 

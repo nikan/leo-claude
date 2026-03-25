@@ -17,3 +17,6 @@ __pycache__/
 
 # Claude Code
 .claude/settings.local.json
+
+# Local install script (contains usernames, not for public repo)
+install.sh

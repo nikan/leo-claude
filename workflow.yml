@@ -46,12 +46,12 @@ roles:
     prompt: prompts/reviewer.md
     args: ""
   translator:
-    bin: vibe
+    bin: scripts/vibe-wrapper.sh
     prompt: prompts/translator.md
     args: "--output text"
     stdin: /dev/null           # vibe hangs if stdin is open; close it
   documentor:
-    bin: vibe
+    bin: scripts/vibe-wrapper.sh
     prompt: prompts/documentor.md
     args: "--output text"
     stdin: /dev/null           # vibe hangs if stdin is open; close it

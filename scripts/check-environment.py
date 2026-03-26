@@ -90,6 +90,7 @@ def check_vibe_auth() -> None:
     print("Checking vibe auth status...")
 
     env_file = Path.home() / ".vibe" / ".env"
+    log_file = Path.home() / ".vibe" / "logs" / "vibe.log"
     if not env_file.exists():
         miss("vibe auth (run: vibe --setup)")
         return
@@ -105,6 +106,17 @@ def check_vibe_auth() -> None:
         return
 
     try:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with log_file.open("a", encoding="utf-8"):
+            pass
+    except OSError as exc:
+        miss(
+            "vibe logging path is not writable "
+            f"({log_file}: {exc.strerror or exc})"
+        )
+        return
+
+    try:
         result = subprocess.run(
             ["vibe", "-p", "Say OK", "--output", "text"],
             input="",
@@ -115,7 +127,9 @@ def check_vibe_auth() -> None:
         if result.returncode == 0:
             ok("vibe auth (API key valid)")
         else:
-            miss("vibe auth (key found but API call failed)")
+            stderr = (result.stderr or "").strip().splitlines()
+            detail = stderr[-1] if stderr else "no stderr output"
+            miss(f"vibe auth (key found but API call failed: {detail})")
     except FileNotFoundError:
         miss("vibe auth (vibe binary not found)")
     except subprocess.TimeoutExpired:

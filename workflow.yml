@@ -172,19 +172,44 @@ stages:
         source: "{working_branch}"
         target: "{branches.target_base}"
         method: "{branches.merge_method}"
+      - action: resolve_linked
+        description: >
+          Collect every issue that must be closed. Three sources must all be
+          checked and their results deduplicated:
+            1. Sub-issues — run scripts/resolve-sub-issues.py {issue_number}
+               (GitHub native sub-issues + task-list body references).
+            2. PR-body keywords — run `gh pr view --json body` on the merged PR
+               and extract every issue number referenced by a closing keyword
+               (Closes, Fixes, Resolves, close, fix, resolve — case-insensitive,
+               followed by #N or a full GitHub issue URL).
+            3. Commit-message keywords — run `gh pr view --json commits` on
+               the merged PR and apply the same closing-keyword extraction to
+               every commit message title and body.
+          Combine all three sets into a single deduplicated list.
+          Exclude issues whose state is already CLOSED.
+          Exclude the parent issue number (it is always closed separately).
+        output: linked_issue_list   # list of issue numbers to close alongside parent
       - action: close
         command: >
           scripts/resolve-sub-issues.py {issue_number} |
           scripts/close-issues.py {issue_number}
         scope: >
-          Parent issue and every OPEN sub-issue that was implemented.
+          Parent issue, every OPEN sub-issue that was implemented, AND every
+          issue collected in linked_issue_list.
+          Pass linked_issue_list numbers to close-issues.py as additional
+          arguments or by prepending synthetic NDJSON lines so the script
+          closes them.
           Sub-issues deferred or left out of scope must NOT be closed.
+          Issues already CLOSED must NOT be re-closed.
       - action: delete
         branch: "{working_branch}"
         where: local and remote
     rules:
-      - Run the close command above; do not close issues manually one by one.
+      - Always resolve linked_issue_list before running the close command — never skip this step even if sub_issue_list is empty.
+      - Close every issue in linked_issue_list that is OPEN, regardless of whether it appears in sub_issue_list.
       - Do not close sub-issues that were explicitly deferred or skipped.
+      - If gh commands fail to fetch PR body or commits, report the error and ask the user whether to proceed or abort — do not silently skip linked issue closure.
+      - After closing, verify each targeted issue is now CLOSED via `gh issue view`; if any remain open, retry once then report to the user.
 
   - id: translate
     name: Translation follow-up

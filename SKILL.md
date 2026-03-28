@@ -14,14 +14,15 @@ Read and parse `workflow.yml` before doing anything else. Every setting, stage, 
 ## Execution rules
 
 1. **Parse `workflow.yml`** at the start of every invocation. Do not cache or assume prior values.
-2. **Walk the `stages` list in order.** Each stage has an `id`, optional `role`, optional `condition`, `steps`, and `rules`.
-3. **Resolve roles** from the `roles` map. Use the configured `bin` and `args` to invoke each role's CLI binary.
-4. **Resolve branches** using `branches.pattern`, substituting the appropriate prefix from `branches.prefixes`.
-5. **Evaluate `condition`** on conditional stages. Skip the stage if the condition is not met.
-6. **Follow `on_failure`** directives: `halt` stops the workflow; `goto <stage_id>` loops back.
-7. **Pass handoff context** listed in the `handoff` array to every role at every stage transition.
-8. **Check `completion`** criteria at the end. The workflow is done only when all listed conditions are satisfied.
-9. **On any failure**, follow the matching rule from the `failure` map. If no rule matches, use `failure.unknown`.
+2. **Re-read `workflow.yml` before every stage transition.** As context fills up, earlier instructions drift out of working memory. Before starting any new stage, re-read the file to confirm: (a) which role owns the stage, (b) which binary/CLI to invoke, (c) what steps and rules apply, (d) what handoff context to pass. Never rely on memory of the initial parse.
+3. **Walk the `stages` list in order.** Each stage has an `id`, optional `role`, optional `condition`, `steps`, and `rules`.
+4. **Resolve roles** from the `roles` map. Use the configured `bin` and `args` to invoke each role's CLI binary.
+5. **Resolve branches** using `branches.pattern`, substituting the appropriate prefix from `branches.prefixes`.
+6. **Evaluate `condition`** on conditional stages. Skip the stage if the condition is not met.
+7. **Follow `on_failure`** directives: `halt` stops the workflow; `goto <stage_id>` loops back.
+8. **Pass handoff context** listed in the `handoff` array to every role at every stage transition.
+9. **Check `completion`** criteria at the end. The workflow is done only when all listed conditions are satisfied.
+10. **On any failure**, follow the matching rule from the `failure` map. If no rule matches, use `failure.unknown`.
 
 ## Inputs
 

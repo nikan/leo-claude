@@ -30,14 +30,15 @@ Read and parse `workflow.yml` before doing anything else. Every setting, stage, 
 Defined under `inputs` in `workflow.yml`. Currently:
 
 - `issue` (required) — GitHub issue number or full URL
-- `target_branch` (optional) — overrides `branches.target_base`
-- `review_limits` (optional) — comma-separated max review iterations for development, translation, and documentation (e.g. `"6,3,2"`). Defaults are defined in the `review_limits` section of `workflow.yml` (development: 5, translation: 3, documentation: 3).
+- `target_branch` (optional) — overrides `branches.target_base`; pass it as `target_branch=<branch>`
+- `review_limits` (optional) — comma-separated max review iterations for development, translation, and documentation (e.g. `"6,3,2"`). Defaults are defined in the `review_limits` section of `workflow.yml` (development: 5, translation: 3, documentation: 3). Pass it as `review_limits=6,3,2`.
 
 ### Invocation examples
 
 ```
-/leo-claude #123              # uses default limits (5,3,3)
-/leo-claude #123 6,3,2        # dev=6, translation=3, docs=2
+/leo-claude #123
+/leo-claude #123 review_limits=6,3,2
+/leo-claude #123 target_branch=release/1.2 review_limits=6,3,2
 ```
 
 ## Preflight

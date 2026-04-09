@@ -104,14 +104,22 @@ review_limits:
   documentation: 3    # max loops for documentation follow-up
 ```
 
-Override defaults at invocation time with a comma-separated argument:
+Override defaults at invocation time with a named input:
 
 ```
-/leo-claude #123 6,3,2     # dev=6, translation=3, docs=2
-/leo-claude #123            # uses defaults (5,3,3)
+/leo-claude #123 review_limits=6,3,2
+/leo-claude #123
 ```
 
 When the limit is reached the workflow halts and asks how to proceed.
+
+Optional inputs should be passed in `key=value` form to avoid positional
+ambiguity:
+
+```
+/leo-claude #123 target_branch=release/1.2
+/leo-claude #123 target_branch=release/1.2 review_limits=6,3,2
+```
 
 ### Role binaries
 

@@ -9,13 +9,16 @@ inputs:
     description: GitHub issue number or full URL
     required: true
   target_branch:
-    description: Override the default target branch
+    description: >
+      Override the default target branch via a named input
+      (`target_branch=<branch>`).
     required: false
   review_limits:
     description: >
       Comma-separated max review iterations for development, translation,
-      and documentation stages (e.g. "6,3,2"). Overrides defaults from
-      the review_limits section below.
+      and documentation stages via a named input
+      (`review_limits=6,3,2`). Overrides defaults from the review_limits
+      section below.
     required: false
 
 # ---------------------------------------------------------------------------
@@ -155,6 +158,15 @@ stages:
           Output is NDJSON; each line has number, title, state, source, url.
           Collect all results into sub_issue_list.
       - build: execution plan covering parent + in-scope sub-issues
+      - set: review_limits
+        rule: >
+          Start with the defaults from the top-level review_limits section.
+          If the review_limits input is provided, parse it as exactly three
+          comma-separated integers in development, translation, documentation
+          order. Store the effective
+          {development, translation, documentation} object in handoff for all
+          later stages. If parsing fails, halt and report the expected format
+          (`review_limits=6,3,2`).
       - set: reviewer_mode
         rule: >
           Compare github.dev_user and github.review_user (both already

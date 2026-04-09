@@ -14,9 +14,10 @@ When the user provides a GitHub issue number or URL:
 4. Resolve branch names using `branches.pattern` and the appropriate `branches.prefixes` entry.
 5. Evaluate `condition` on conditional stages — skip if not met.
 6. Follow `on_failure` directives: `halt` stops the workflow; `goto <stage_id>` loops back.
-7. Pass every field listed in `handoff` to each role at each stage transition.
-8. Check all `completion` criteria at the end.
-9. On failure, follow the matching rule from the `failure` map.
+7. Enforce `max_iterations` on looping stages. If a `review_limits` input is provided (comma-separated: `dev,translation,docs`), parse it and override the defaults from the `review_limits` section. Track iteration count per looping stage; halt with `failure.review_limit_exceeded` when the limit is reached.
+8. Pass every field listed in `handoff` to each role at each stage transition.
+9. Check all `completion` criteria at the end.
+10. On failure, follow the matching rule from the `failure` map.
 
 ## Extending
 

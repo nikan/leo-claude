@@ -20,9 +20,10 @@ Read and parse `workflow.yml` before doing anything else. Every setting, stage, 
 5. **Resolve branches** using `branches.pattern`, substituting the appropriate prefix from `branches.prefixes`.
 6. **Evaluate `condition`** on conditional stages. Skip the stage if the condition is not met.
 7. **Follow `on_failure`** directives: `halt` stops the workflow; `goto <stage_id>` loops back.
-8. **Pass handoff context** listed in the `handoff` array to every role at every stage transition.
-9. **Check `completion`** criteria at the end. The workflow is done only when all listed conditions are satisfied.
-10. **On any failure**, follow the matching rule from the `failure` map. If no rule matches, use `failure.unknown`.
+8. **Enforce `max_iterations`** on looping stages. If a `review_limits` input is provided (comma-separated: `dev,translation,docs`), parse it and override the defaults from the `review_limits` section. Track iteration count per looping stage; halt with `failure.review_limit_exceeded` when the limit is reached.
+9. **Pass handoff context** listed in the `handoff` array to every role at every stage transition.
+10. **Check `completion`** criteria at the end. The workflow is done only when all listed conditions are satisfied.
+11. **On any failure**, follow the matching rule from the `failure` map. If no rule matches, use `failure.unknown`.
 
 ## Inputs
 
@@ -30,6 +31,14 @@ Defined under `inputs` in `workflow.yml`. Currently:
 
 - `issue` (required) — GitHub issue number or full URL
 - `target_branch` (optional) — overrides `branches.target_base`
+- `review_limits` (optional) — comma-separated max review iterations for development, translation, and documentation (e.g. `"6,3,2"`). Defaults are defined in the `review_limits` section of `workflow.yml` (development: 5, translation: 3, documentation: 3).
+
+### Invocation examples
+
+```
+/leo-claude #123              # uses default limits (5,3,3)
+/leo-claude #123 6,3,2        # dev=6, translation=3, docs=2
+```
 
 ## Preflight
 

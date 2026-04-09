@@ -11,6 +11,21 @@ inputs:
   target_branch:
     description: Override the default target branch
     required: false
+  review_limits:
+    description: >
+      Comma-separated max review iterations for development, translation,
+      and documentation stages (e.g. "6,3,2"). Overrides defaults from
+      the review_limits section below.
+    required: false
+
+# ---------------------------------------------------------------------------
+# Review iteration limits — max review→implement loops before halting
+# Override at invocation via review_limits input (e.g. "6,3,2").
+# ---------------------------------------------------------------------------
+review_limits:
+  development: 5
+  translation: 3
+  documentation: 3
 
 # ---------------------------------------------------------------------------
 # Branch and merge settings
@@ -93,6 +108,7 @@ handoff:
   - check_outcomes
   - next_action
   - reviewer_mode        # "comments" | "change_request" — set once in context, never recomputed
+  - review_limits        # {development, translation, documentation} — max iterations per loop
 
 # ---------------------------------------------------------------------------
 # Stages — executed in order; each stage can be conditional or skipped
@@ -178,6 +194,7 @@ stages:
     name: Review
     role: reviewer
     description: Review the diff for regressions, correctness, and branch hygiene.
+    max_iterations: "{review_limits.development}"
     rules:
       - Review diff against the target branch.
       - Focus on regressions, correctness, missing tests, migration risk, branch hygiene.
@@ -187,6 +204,7 @@ stages:
       - If reviewer_mode == "change_request" → submit a formal change request when issues are found.
       - If issues found, return to implementer, then re-review after fixes.
       - Only continue once review is explicitly clean.
+      - Track the current iteration count. If the review→implement loop reaches max_iterations without a clean review, halt the workflow and report to the user.
     on_failure: goto implement
 
   - id: merge
@@ -242,6 +260,7 @@ stages:
     role: translator
     condition: new or changed user-facing strings exist
     description: Update locale targets on a follow-up branch after the feature merge.
+    max_iterations: "{review_limits.translation}"
     branch: "{branches.prefixes.translation}/{issue-number}-{short-slug}"
     steps:
       - action: inspect
@@ -264,6 +283,7 @@ stages:
     role: documentor
     condition: change affects user flows, setup, architecture, ops, or notable behavior
     description: Update docs on a follow-up branch after the feature merge.
+    max_iterations: "{review_limits.documentation}"
     branch: "{branches.prefixes.documentation}/{issue-number}-{short-slug}"
     steps:
       - action: inspect
@@ -306,5 +326,9 @@ failure:
     If GitHub auth or permissions block issue closure, merge if the code
     workflow is otherwise complete, then tell the user exactly what remains
     manual.
+  review_limit_exceeded: >
+    The review→implement loop has reached max_iterations without a clean
+    review. Halt the workflow, summarize unresolved issues, and ask the
+    user how to proceed (override the limit, force-merge, or abandon).
   unknown: >
     Pause, summarize the failure clearly, and ask the user how to proceed.

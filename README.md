@@ -93,6 +93,34 @@ branches:
   pattern: "{prefix}/{issue-number}-{short-slug}"
 ```
 
+### Review iteration limits
+
+Control how many review→implement loops are allowed before the workflow halts:
+
+```yaml
+review_limits:
+  development: 5      # max loops for the main review stage
+  translation: 3      # max loops for translation follow-up
+  documentation: 3    # max loops for documentation follow-up
+```
+
+Override defaults at invocation time with a named input:
+
+```
+/leo-claude #123 review_limits=6,3,2
+/leo-claude #123
+```
+
+When the limit is reached the workflow halts and asks how to proceed.
+
+Optional inputs should be passed in `key=value` form to avoid positional
+ambiguity:
+
+```
+/leo-claude #123 target_branch=release/1.2
+/leo-claude #123 target_branch=release/1.2 review_limits=6,3,2
+```
+
 ### Role binaries
 
 Each workflow stage is assigned to a CLI binary. Change these to match your setup:

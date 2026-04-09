@@ -2,6 +2,15 @@
 
 All notable changes to leo-claude are documented in this file.
 
+## [0.5.0] - 2026-04-09
+
+### Added
+- Configurable review iteration limits per stage (development: 5, translation: 3, documentation: 3 by default).
+- `review_limits` input for CLI override via `key=value` syntax (e.g. `review_limits=6,3,2`).
+- `max_iterations` field on review, translate, and document stages.
+- `review_limit_exceeded` failure rule — halts workflow when a review loop exceeds its limit.
+- Explicit `set: review_limits` resolution step in the context stage.
+
 ## [0.4.0] - 2026-03-28
 
 ### Added
@@ -39,6 +48,7 @@ Initial release.
 - Conditional stages for translation and documentation follow-ups.
 - Branch naming with configurable prefixes and patterns.
 
+[0.5.0]: https://github.com/nikan/leo-claude/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/nikan/leo-claude/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nikan/leo-claude/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nikan/leo-claude/compare/v0.1.0...v0.2.0
